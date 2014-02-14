@@ -36,6 +36,7 @@ public class MoveWork implements Serializable {
   private LoadTableDesc loadTableWork;
   private LoadFileDesc loadFileWork;
   private LoadMultiFilesDesc loadMultiFilesWork;
+  private HBaseCompleteBulkLoadDesc completeBulkLoadWork;
 
   private boolean checkFileFormat;
 
@@ -63,10 +64,11 @@ public class MoveWork implements Serializable {
 
   public MoveWork(HashSet<ReadEntity> inputs, HashSet<WriteEntity> outputs,
       final LoadTableDesc loadTableWork, final LoadFileDesc loadFileWork,
-      boolean checkFileFormat) {
+      final HBaseCompleteBulkLoadDesc completeBulkLoadWork, boolean checkFileFormat) {
     this(inputs, outputs);
     this.loadTableWork = loadTableWork;
     this.loadFileWork = loadFileWork;
+    this.completeBulkLoadWork = completeBulkLoadWork;
     this.checkFileFormat = checkFileFormat;
   }
 
@@ -95,6 +97,15 @@ public class MoveWork implements Serializable {
 
   public void setLoadFileWork(final LoadFileDesc loadFileWork) {
     this.loadFileWork = loadFileWork;
+  }
+
+  @Explain(displayName = "HBase completeBulkLoad")
+  public HBaseCompleteBulkLoadDesc getCompleteBulkLoadWork() {
+    return completeBulkLoadWork;
+  }
+
+  public void setCompleteBulkLoadWork(HBaseCompleteBulkLoadDesc completeBulkLoadWork) {
+    this.completeBulkLoadWork = completeBulkLoadWork;
   }
 
   public boolean getCheckFileFormat() {

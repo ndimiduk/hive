@@ -331,7 +331,17 @@
           <groupId>org.apache.hadoop</groupId>
           <artifactId>hadoop-core</artifactId>
           <version>${hadoop-20S.version}</version>
-         <optional>true</optional>
+          <optional>true</optional>
+        </dependency>
+        <dependency>
+          <groupId>org.apache.hbase</groupId>
+          <artifactId>hbase-client</artifactId>
+          <version>${hbase.hadoop1.version}</version>
+        </dependency>
+        <dependency>
+          <groupId>org.apache.hbase</groupId>
+          <artifactId>hbase-server</artifactId>
+          <version>${hbase.hadoop1.version}</version>
         </dependency>
       </dependencies>
     </profile>
@@ -373,6 +383,16 @@
          <version>${hadoop-23.version}</version>
          <optional>true</optional>
        </dependency>
+        <dependency>
+          <groupId>org.apache.hbase</groupId>
+          <artifactId>hbase-client</artifactId>
+          <version>${hbase.hadoop2.version}</version>
+        </dependency>
+        <dependency>
+          <groupId>org.apache.hbase</groupId>
+          <artifactId>hbase-server</artifactId>
+          <version>${hbase.hadoop2.version}</version>
+        </dependency>
       </dependencies>
     </profile>
     <profile>

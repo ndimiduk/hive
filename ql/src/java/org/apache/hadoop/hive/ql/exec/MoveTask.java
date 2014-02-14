@@ -27,13 +27,20 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.LocalFileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hbase.HBaseConfiguration;
+import org.apache.hadoop.hbase.client.HConnection;
+import org.apache.hadoop.hbase.client.HConnectionManager;
+import org.apache.hadoop.hbase.client.HTable;
+import org.apache.hadoop.hbase.mapreduce.LoadIncrementalHFiles;
 import org.apache.hadoop.hive.common.HiveStatsUtils;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.metastore.MetaStoreUtils;
@@ -57,6 +64,7 @@ import org.apache.hadoop.hive.ql.optimizer.physical.BucketingSortingCtx.BucketCo
 import org.apache.hadoop.hive.ql.optimizer.physical.BucketingSortingCtx.SortCol;
 import org.apache.hadoop.hive.ql.parse.BaseSemanticAnalyzer;
 import org.apache.hadoop.hive.ql.plan.DynamicPartitionCtx;
+import org.apache.hadoop.hive.ql.plan.HBaseCompleteBulkLoadDesc;
 import org.apache.hadoop.hive.ql.plan.LoadFileDesc;
 import org.apache.hadoop.hive.ql.plan.LoadMultiFilesDesc;
 import org.apache.hadoop.hive.ql.plan.LoadTableDesc;
@@ -192,6 +200,20 @@ public class MoveTask extends Task<MoveWork> implements Serializable {
           ctx.getHiveLocks().remove(lock);
         }
       }
+    }
+  }
+
+  private void completeBulkLoad(Path sourcePath, String targetTable, Configuration conf) throws Exception {
+    LoadIncrementalHFiles loadIncrementalHFiles = new LoadIncrementalHFiles(conf);
+    HConnection conn = null;
+    HTable table = null;
+    try {
+      conn = HConnectionManager.createConnection(conf);
+      table = (HTable) conn.getTable(targetTable);
+      loadIncrementalHFiles.doBulkLoad(sourcePath, table);
+    } finally {
+      if (table != null) table.close();
+      if (conn != null) conn.close();
     }
   }
 
@@ -426,6 +448,41 @@ public class MoveTask extends Task<MoveWork> implements Serializable {
               table.getCols());
         }
         releaseLocks(tbd);
+      }
+
+      // for HFiles
+      HBaseCompleteBulkLoadDesc cbld = work.getCompleteBulkLoadWork();
+      if (cbld != null) {
+        // lookup hfile.family.path. Duplicated from HiveHFileOutputFormat#getFamilyPath
+        Configuration conf = driverContext.getCtx().getConf();
+        Properties tableProps = cbld.getTable().getProperties();
+        Path columnFamilyPath = new Path(conf.get("hfile.family.path", tableProps.getProperty("hfile.family.path")));
+        Path sourcePath = columnFamilyPath.getParent();
+        // TODO: assert hfile.family.path is a directory of HFiles
+        assert sourcePath.getFileSystem(driverContext.getCtx().getConf()).isDirectory(sourcePath) : sourcePath + " is not a directory.";
+
+        String tableName = tableProps.getProperty("hbase.table.name" /* HBaseSerDe#HBASE_TABLE_NAME */);
+        conf = HBaseConfiguration.create(conf);
+        console.printInfo("Registering HFiles with RegionServers: " + sourcePath + " => " + tableName);
+        completeBulkLoad(sourcePath, tableName, conf);
+
+        // after bulkload, all hfiles should be gone
+        FileSystem fs = columnFamilyPath.getFileSystem(conf);
+        FileStatus[] files = fs.listStatus(columnFamilyPath);
+        if (files == null || files.length == 0) {
+          // bulkload succeeded. Clean up empty column family directory.
+          fs.delete(columnFamilyPath, true);
+        } else {
+          // bulkload failed. report abandoned files.
+          long totalSize = 0;
+          for (FileStatus f : files) {
+            totalSize += f.getLen();
+          }
+          String msg = "Failed to bulkload all HFiles in " + columnFamilyPath + ". Roughly "
+            + StringUtils.humanReadableInt(totalSize) + "bytes abandoned.";
+          console.printError("HFiles remain; registration failed!", msg);
+          return 1;
+        }
       }
 
       return 0;

@@ -34,6 +34,7 @@ public class StatsWork implements Serializable {
   private tableSpec tableSpecs;         // source table spec -- for TableScanOperator
   private LoadTableDesc loadTableDesc;  // same as MoveWork.loadTableDesc -- for FileSinkOperator
   private LoadFileDesc loadFileDesc;    // same as MoveWork.loadFileDesc -- for FileSinkOperator
+  private HBaseCompleteBulkLoadDesc completeBulkLoadDesc;
   private String aggKey;                // aggregation key prefix
   private boolean statsReliable;        // are stats completely reliable
 
@@ -70,6 +71,10 @@ public class StatsWork implements Serializable {
     this.loadFileDesc = loadFileDesc;
   }
 
+  public StatsWork(HBaseCompleteBulkLoadDesc completeBulkLoadDesc) {
+    this.completeBulkLoadDesc = completeBulkLoadDesc;
+  }
+
   public StatsWork(boolean statsReliable) {
     this.statsReliable = statsReliable;
   }
@@ -84,6 +89,10 @@ public class StatsWork implements Serializable {
 
   public LoadFileDesc getLoadFileDesc() {
     return loadFileDesc;
+  }
+
+  public HBaseCompleteBulkLoadDesc getCompleteBulkLoadDesc() {
+    return completeBulkLoadDesc;
   }
 
   public void setAggKey(String aggK) {

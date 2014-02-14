@@ -28,6 +28,8 @@ import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.Set;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hbase.HBaseConfiguration;
 import org.apache.hadoop.hbase.HColumnDescriptor;
@@ -66,6 +68,7 @@ import org.apache.hadoop.util.StringUtils;
 public class HBaseStorageHandler extends DefaultStorageHandler
   implements HiveMetaHook, HiveStoragePredicateHandler {
 
+  final static private Log LOG = LogFactory.getLog(HBaseStorageHandler.class);
   final static public String DEFAULT_PREFIX = "default.";
 
   //Check if the configure job properties is called from input
@@ -255,7 +258,11 @@ public class HBaseStorageHandler extends DefaultStorageHandler
 
   @Override
   public Class<? extends OutputFormat> getOutputFormatClass() {
-    return org.apache.hadoop.hive.hbase.HiveHBaseTableOutputFormat.class;
+    if (jobConf.getBoolean("hive.hbase.bulkload", false)) {
+      return HiveHFileOutputFormat.class;
+    } else {
+      return HiveHBaseTableOutputFormat.class;
+    }
   }
 
   @Override
@@ -342,8 +349,22 @@ public class HBaseStorageHandler extends DefaultStorageHandler
       } //input job properties
     }
     else {
-      jobProperties.put(TableOutputFormat.OUTPUT_TABLE, tableName);
+      if (isHBaseBulkLoad(jobConf)) {
+        // only support bulkload when a hfile.family.path has been specified.
+        // TODO: support generating a temporary output path when hfile.family.path is not specified.
+        // TODO: support loading into multiple CF's at a time
+        String path = HiveHFileOutputFormat.getFamilyPath(jobConf, tableProperties);
+        // TODO: use a variation of FileOutputFormat.setOutputPath
+        LOG.debug("Setting mapred.output.dir to " + path);
+        jobProperties.put("mapred.output.dir", path);
+      } else {
+        jobProperties.put(TableOutputFormat.OUTPUT_TABLE, tableName);
+      }
     } // output job properties
+  }
+
+  private static final boolean isHBaseBulkLoad(Configuration conf) {
+    return conf.getBoolean("hive.hbase.bulkload", false);
   }
 
   /**
@@ -378,7 +399,7 @@ public class HBaseStorageHandler extends DefaultStorageHandler
     try {
       TableMapReduceUtil.addDependencyJars(jobConf);
       org.apache.hadoop.hbase.mapreduce.TableMapReduceUtil.addDependencyJars(jobConf,
-          HBaseStorageHandler.class, org.apache.hadoop.hbase.HBaseConfiguration.class);
+        HBaseStorageHandler.class, org.apache.hadoop.hbase.HBaseConfiguration.class);
     } catch (IOException e) {
       throw new RuntimeException(e);
     }

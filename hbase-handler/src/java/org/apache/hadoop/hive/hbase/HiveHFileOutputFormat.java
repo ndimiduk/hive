@@ -19,6 +19,9 @@
 package org.apache.hadoop.hive.hbase;
 
 import java.io.IOException;
+import java.io.InterruptedIOException;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.SortedMap;
@@ -27,10 +30,14 @@ import java.util.TreeMap;
 import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.hbase.Cell;
+import org.apache.hadoop.hbase.CellComparator;
 import org.apache.hadoop.hbase.KeyValue;
+import org.apache.hadoop.hbase.KeyValueUtil;
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable;
 import org.apache.hadoop.hbase.mapreduce.HFileOutputFormat;
 import org.apache.hadoop.hbase.util.Bytes;
@@ -54,10 +61,9 @@ public class HiveHFileOutputFormat extends
     HFileOutputFormat implements
     HiveOutputFormat<ImmutableBytesWritable, KeyValue> {
 
-  private static final String HFILE_FAMILY_PATH = "hfile.family.path";
+  public static final String HFILE_FAMILY_PATH = "hfile.family.path";
 
-  static final Log LOG = LogFactory.getLog(
-    HiveHFileOutputFormat.class.getName());
+  static final Log LOG = LogFactory.getLog(HiveHFileOutputFormat.class.getName());
 
   private
   org.apache.hadoop.mapreduce.RecordWriter<ImmutableBytesWritable, KeyValue>
@@ -70,6 +76,14 @@ public class HiveHFileOutputFormat extends
     }
   }
 
+  /**
+   * Retrieve the family path, first check the JobConf, then the table properties.
+   * @return the family path or null if not specified.
+   */
+  public static String getFamilyPath(Configuration jc, Properties tableProps) {
+    return jc.get(HFILE_FAMILY_PATH, tableProps.getProperty(HFILE_FAMILY_PATH));
+  }
+
   @Override
   public FSRecordWriter getHiveRecordWriter(
     final JobConf jc,
@@ -79,8 +93,8 @@ public class HiveHFileOutputFormat extends
     Properties tableProperties,
     final Progressable progressable) throws IOException {
 
-    // Read configuration for the target path
-    String hfilePath = tableProperties.getProperty(HFILE_FAMILY_PATH);
+    // Read configuration for the target path, first from jobconf, then from table properties
+    String hfilePath = getFamilyPath(jc, tableProperties);
     if (hfilePath == null) {
       throw new RuntimeException(
         "Please set " + HFILE_FAMILY_PATH + " to target location for HFiles");
@@ -129,14 +143,20 @@ public class HiveHFileOutputFormat extends
           if (abort) {
             return;
           }
-          // Move the region file(s) from the task output directory
-          // to the location specified by the user.  There should
-          // actually only be one (each reducer produces one HFile),
-          // but we don't know what its name is.
+          /*
+           * Move the region file(s) from the task output directory to the location specified by
+           * the user. There should actually only be one (each reducer produces one HFile), but
+           * we don't know what its name is.
+           *
+           * TODO: simplify bulkload to detecting the HBaseStorageHandler scenario, ignore
+           * hfile.family.path, skip this move step and allow MoveTask to operate directly off
+           * of SemanticAnalyzer's queryTempdir.
+           */
           FileSystem fs = outputdir.getFileSystem(jc);
           fs.mkdirs(columnFamilyPath);
           Path srcDir = outputdir;
           for (;;) {
+            LOG.debug("Looking for column family names in " + srcDir);
             FileStatus [] files = fs.listStatus(srcDir);
             if ((files == null) || (files.length == 0)) {
               throw new IOException("No files found in " + srcDir);
@@ -150,6 +170,7 @@ public class HiveHFileOutputFormat extends
             }
           }
           for (FileStatus regionFile : fs.listStatus(srcDir)) {
+            LOG.debug("Moving hfile " + regionFile.getPath() + " to new parent directory " + columnFamilyPath);
             fs.rename(
               regionFile.getPath(),
               new Path(
@@ -165,10 +186,9 @@ public class HiveHFileOutputFormat extends
         }
       }
 
-      @Override
-      public void write(Writable w) throws IOException {
+      private void writeTest(Text text) throws IOException {
         // Decompose the incoming text row into fields.
-        String s = ((Text) w).toString();
+        String s = text.toString();
         String [] fields = s.split("\u0001");
         assert(fields.length <= (columnMap.size() + 1));
         // First field is the row key.
@@ -196,9 +216,38 @@ public class HiveHFileOutputFormat extends
             valBytes);
           try {
             fileWriter.write(null, kv);
+          } catch (IOException e) {
+            LOG.info("Failed while writing row: " + s);
+            throw e;
           } catch (InterruptedException ex) {
             throw new IOException(ex);
           }
+        }
+      }
+
+      private void writePut(PutWritable put) throws IOException {
+        ImmutableBytesWritable row = new ImmutableBytesWritable(put.getPut().getRow());
+        SortedMap<byte[], List<Cell>> cells = put.getPut().getFamilyCellMap();
+        for (Map.Entry<byte[], List<Cell>> entry : cells.entrySet()) {
+          Collections.sort(entry.getValue(), new CellComparator());
+          for (Cell c : entry.getValue()) {
+            try {
+              fileWriter.write(row, KeyValueUtil.copyToNewKeyValue(c));
+            } catch (InterruptedException e) {
+              throw (InterruptedIOException) new InterruptedIOException().initCause(e);
+            }
+          }
+        }
+      }
+
+      @Override
+      public void write(Writable w) throws IOException {
+        if (w instanceof Text) {
+          writeTest((Text) w);
+        } else if (w instanceof PutWritable) {
+          writePut((PutWritable) w);
+        } else {
+          throw new IOException("Unexpected writable " + w);
         }
       }
     };

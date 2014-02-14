@@ -290,7 +290,7 @@ public class ImportSemanticAnalyzer extends BaseSemanticAnalyzer {
         Utilities.getTableDesc(table), new TreeMap<String, String>(),
         false);
     Task<?> loadTableTask = TaskFactory.get(new MoveWork(getInputs(),
-        getOutputs(), loadTableWork, null, false), conf);
+        getOutputs(), loadTableWork, null, null, false), conf);
     copyTask.addDependentTask(loadTableTask);
     rootTasks.add(copyTask);
     return loadTableTask;
@@ -338,7 +338,7 @@ public class ImportSemanticAnalyzer extends BaseSemanticAnalyzer {
           partSpec.getPartSpec(), true);
       loadTableWork.setInheritTableSpecs(false);
       Task<?> loadPartTask = TaskFactory.get(new MoveWork(
-          getInputs(), getOutputs(), loadTableWork, null, false),
+          getInputs(), getOutputs(), loadTableWork, null, null, false),
           conf);
       copyTask.addDependentTask(loadPartTask);
       addPartTask.addDependentTask(loadPartTask);

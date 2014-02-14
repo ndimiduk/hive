@@ -887,7 +887,7 @@ public class DDLSemanticAnalyzer extends BaseSemanticAnalyzer {
         LoadTableDesc ltd = new LoadTableDesc(queryTmpdir, tblDesc,
             partSpec == null ? new HashMap<String, String>() : partSpec);
         ltd.setLbCtx(lbCtx);
-        Task<MoveWork> moveTsk = TaskFactory.get(new MoveWork(null, null, ltd, null, false),
+        Task<MoveWork> moveTsk = TaskFactory.get(new MoveWork(null, null, ltd, null, null, false),
             conf);
         truncateTask.addDependentTask(moveTsk);
 
@@ -1502,7 +1502,7 @@ public class DDLSemanticAnalyzer extends BaseSemanticAnalyzer {
       LoadTableDesc ltd = new LoadTableDesc(queryTmpdir, tblDesc,
           partSpec == null ? new HashMap<String, String>() : partSpec);
       ltd.setLbCtx(lbCtx);
-      Task<MoveWork> moveTsk = TaskFactory.get(new MoveWork(null, null, ltd, null, false),
+      Task<MoveWork> moveTsk = TaskFactory.get(new MoveWork(null, null, ltd, null, null, false),
           conf);
       mergeTask.addDependentTask(moveTsk);
 

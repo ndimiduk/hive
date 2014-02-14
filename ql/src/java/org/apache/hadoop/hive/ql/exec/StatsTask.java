@@ -95,6 +95,9 @@ public class StatsTask extends Task<StatsWork> implements Serializable {
     if (work.getLoadFileDesc() != null) {
       workComponentsPresent++;
     }
+    if (work.getCompleteBulkLoadDesc() != null) {
+      workComponentsPresent++;
+    }
 
     assert (workComponentsPresent == 1);
 
@@ -102,8 +105,10 @@ public class StatsTask extends Task<StatsWork> implements Serializable {
     try {
       if (work.getLoadTableDesc() != null) {
         tableName = work.getLoadTableDesc().getTable().getTableName();
-      } else if (work.getTableSpecs() != null){
+      } else if (work.getTableSpecs() != null) {
         tableName = work.getTableSpecs().tableName;
+      } else if (work.getCompleteBulkLoadDesc() != null) {
+        tableName = work.getCompleteBulkLoadDesc().getTable().getTableName();
       } else {
         tableName = work.getLoadFileDesc().getDestinationCreateTable();
       }

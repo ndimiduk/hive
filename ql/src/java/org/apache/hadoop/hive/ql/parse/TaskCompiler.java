@@ -51,6 +51,7 @@ import org.apache.hadoop.hive.ql.plan.ColumnStatsWork;
 import org.apache.hadoop.hive.ql.plan.CreateTableDesc;
 import org.apache.hadoop.hive.ql.plan.DDLWork;
 import org.apache.hadoop.hive.ql.plan.FetchWork;
+import org.apache.hadoop.hive.ql.plan.HBaseCompleteBulkLoadDesc;
 import org.apache.hadoop.hive.ql.plan.LoadFileDesc;
 import org.apache.hadoop.hive.ql.plan.LoadTableDesc;
 import org.apache.hadoop.hive.ql.plan.MoveWork;
@@ -87,6 +88,7 @@ public abstract class TaskCompiler {
 
     List<LoadTableDesc> loadTableWork = pCtx.getLoadTableWork();
     List<LoadFileDesc> loadFileWork = pCtx.getLoadFileWork();
+    List<HBaseCompleteBulkLoadDesc> completeBulkLoadWork = pCtx.getCompleteBulkLoadWork();
 
     boolean isCStats = qb.isAnalyzeRewrite();
 
@@ -135,7 +137,7 @@ public abstract class TaskCompiler {
       }
     } else if (!isCStats) {
       for (LoadTableDesc ltd : loadTableWork) {
-        Task<MoveWork> tsk = TaskFactory.get(new MoveWork(null, null, ltd, null, false), conf);
+        Task<MoveWork> tsk = TaskFactory.get(new MoveWork(null, null, ltd, null, null, false), conf);
         mvTask.add(tsk);
         // Check to see if we are stale'ing any indexes and auto-update them if we want
         if (HiveConf.getBoolVar(conf, HiveConf.ConfVars.HIVEINDEXAUTOUPDATE)) {
@@ -188,8 +190,12 @@ public abstract class TaskCompiler {
 
           oneLoadFile = false;
         }
-        mvTask.add(TaskFactory.get(new MoveWork(null, null, null, lfd, false), conf));
+        mvTask.add(TaskFactory.get(new MoveWork(null, null, null, lfd, null, false), conf));
       }
+    }
+
+    for (HBaseCompleteBulkLoadDesc cbld : completeBulkLoadWork) {
+      mvTask.add(TaskFactory.get(new MoveWork(null, null, null, null, cbld, false), conf));
     }
 
     generateTaskTree(rootTasks, pCtx, mvTask, inputs, outputs);
@@ -369,7 +375,7 @@ public abstract class TaskCompiler {
         pCtx.getTopSelOps(), pCtx.getOpParseCtx(), pCtx.getJoinContext(),
         pCtx.getSmbMapJoinContext(), pCtx.getTopToTable(), pCtx.getTopToProps(),
         pCtx.getFsopToTable(),
-        pCtx.getLoadTableWork(), pCtx.getLoadFileWork(), pCtx.getContext(),
+        pCtx.getLoadTableWork(), pCtx.getLoadFileWork(), pCtx.getCompleteBulkLoadWork(), pCtx.getContext(),
         pCtx.getIdToTableNameMap(), pCtx.getDestTableId(), pCtx.getUCtx(),
         pCtx.getListMapJoinOpsNoReducer(), pCtx.getGroupOpToInputTables(),
         pCtx.getPrunedPartitions(), pCtx.getOpToSamplePruner(), pCtx.getGlobalLimitCtx(),

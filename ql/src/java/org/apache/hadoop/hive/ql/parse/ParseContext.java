@@ -49,6 +49,7 @@ import org.apache.hadoop.hive.ql.optimizer.ppr.PartitionPruner;
 import org.apache.hadoop.hive.ql.optimizer.unionproc.UnionProcContext;
 import org.apache.hadoop.hive.ql.plan.ExprNodeDesc;
 import org.apache.hadoop.hive.ql.plan.FilterDesc.sampleDesc;
+import org.apache.hadoop.hive.ql.plan.HBaseCompleteBulkLoadDesc;
 import org.apache.hadoop.hive.ql.plan.LoadFileDesc;
 import org.apache.hadoop.hive.ql.plan.LoadTableDesc;
 import org.apache.hadoop.hive.ql.plan.MapJoinDesc;
@@ -85,6 +86,7 @@ public class ParseContext {
   private HashMap<String, SplitSample> nameToSplitSample;
   private List<LoadTableDesc> loadTableWork;
   private List<LoadFileDesc> loadFileWork;
+  private List<HBaseCompleteBulkLoadDesc> completeBulkLoadWork;
   private Context ctx;
   private HiveConf conf;
   private HashMap<String, String> idToTableNameMap;
@@ -170,7 +172,7 @@ public class ParseContext {
       HashMap<TableScanOperator, Table> topToTable,
       HashMap<TableScanOperator, Map<String, String>> topToProps,
       Map<FileSinkOperator, Table> fsopToTable,
-      List<LoadTableDesc> loadTableWork, List<LoadFileDesc> loadFileWork,
+      List<LoadTableDesc> loadTableWork, List<LoadFileDesc> loadFileWork, List<HBaseCompleteBulkLoadDesc> completeBulkLoadWork,
       Context ctx, HashMap<String, String> idToTableNameMap, int destTableId,
       UnionProcContext uCtx, List<AbstractMapJoinOperator<? extends MapJoinDesc>> listMapJoinOpsNoReducer,
       Map<GroupByOperator, Set<String>> groupOpToInputTables,
@@ -195,6 +197,7 @@ public class ParseContext {
     this.topToProps = topToProps;
     this.loadFileWork = loadFileWork;
     this.loadTableWork = loadTableWork;
+    this.completeBulkLoadWork = completeBulkLoadWork;
     this.opParseCtx = opParseCtx;
     this.topOps = topOps;
     this.topSelOps = topSelOps;
@@ -449,6 +452,14 @@ public class ParseContext {
    */
   public void setLoadFileWork(List<LoadFileDesc> loadFileWork) {
     this.loadFileWork = loadFileWork;
+  }
+
+  public List<HBaseCompleteBulkLoadDesc> getCompleteBulkLoadWork() {
+    return completeBulkLoadWork;
+  }
+
+  public void setCompleteBulkLoadWork(List<HBaseCompleteBulkLoadDesc> completeBulkLoadWork) {
+    this.completeBulkLoadWork = completeBulkLoadWork;
   }
 
   public HashMap<String, String> getIdToTableNameMap() {

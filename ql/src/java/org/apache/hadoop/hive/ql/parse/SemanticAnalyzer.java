@@ -135,6 +135,7 @@ import org.apache.hadoop.hive.ql.plan.FilterDesc;
 import org.apache.hadoop.hive.ql.plan.FilterDesc.sampleDesc;
 import org.apache.hadoop.hive.ql.plan.ForwardDesc;
 import org.apache.hadoop.hive.ql.plan.GroupByDesc;
+import org.apache.hadoop.hive.ql.plan.HBaseCompleteBulkLoadDesc;
 import org.apache.hadoop.hive.ql.plan.HiveOperation;
 import org.apache.hadoop.hive.ql.plan.JoinCondDesc;
 import org.apache.hadoop.hive.ql.plan.JoinDesc;
@@ -204,6 +205,7 @@ public class SemanticAnalyzer extends BaseSemanticAnalyzer {
   private LinkedHashMap<Operator<? extends OperatorDesc>, OpParseContext> opParseCtx;
   private List<LoadTableDesc> loadTableWork;
   private List<LoadFileDesc> loadFileWork;
+  private List<HBaseCompleteBulkLoadDesc> completeBulkLoadWork;
   private Map<JoinOperator, QBJoinTree> joinContext;
   private Map<SMBMapJoinOperator, QBJoinTree> smbMapJoinContext;
   private final HashMap<TableScanOperator, Table> topToTable;
@@ -276,6 +278,7 @@ public class SemanticAnalyzer extends BaseSemanticAnalyzer {
     topSelOps = new HashMap<String, Operator<? extends OperatorDesc>>();
     loadTableWork = new ArrayList<LoadTableDesc>();
     loadFileWork = new ArrayList<LoadFileDesc>();
+    completeBulkLoadWork = new ArrayList<HBaseCompleteBulkLoadDesc>();
     opParseCtx = new LinkedHashMap<Operator<? extends OperatorDesc>, OpParseContext>();
     joinContext = new HashMap<JoinOperator, QBJoinTree>();
     smbMapJoinContext = new HashMap<SMBMapJoinOperator, QBJoinTree>();
@@ -303,6 +306,7 @@ public class SemanticAnalyzer extends BaseSemanticAnalyzer {
     super.reset();
     loadTableWork.clear();
     loadFileWork.clear();
+    completeBulkLoadWork.clear();
     topOps.clear();
     topSelOps.clear();
     destTableId = 1;
@@ -327,6 +331,7 @@ public class SemanticAnalyzer extends BaseSemanticAnalyzer {
     opParseCtx = pctx.getOpParseCtx();
     loadTableWork = pctx.getLoadTableWork();
     loadFileWork = pctx.getLoadFileWork();
+    completeBulkLoadWork = pctx.getCompleteBulkLoadWork();
     joinContext = pctx.getJoinContext();
     smbMapJoinContext = pctx.getSmbMapJoinContext();
     ctx = pctx.getContext();
@@ -344,8 +349,8 @@ public class SemanticAnalyzer extends BaseSemanticAnalyzer {
   public ParseContext getParseContext() {
     return new ParseContext(conf, qb, ast, opToPartPruner, opToPartList, topOps,
         topSelOps, opParseCtx, joinContext, smbMapJoinContext, topToTable, topToTableProps,
-        fsopToTable, loadTableWork,
-        loadFileWork, ctx, idToTableNameMap, destTableId, uCtx,
+        fsopToTable, loadTableWork, loadFileWork, completeBulkLoadWork,
+        ctx, idToTableNameMap, destTableId, uCtx,
         listMapJoinOpsNoReducer, groupOpToInputTables, prunedPartitions,
         opToSamplePruner, globalLimitCtx, nameToSplitSample, inputs, rootTasks,
         opToPartToSkewedPruner, viewAliasToInput,
@@ -5399,6 +5404,22 @@ public class SemanticAnalyzer extends BaseSemanticAnalyzer {
     return false;
   }
 
+  /**
+   * Return true when {@code table} is registered with the HBaseStorageHandler, false otherwise.
+   */
+  private boolean isHBaseTable(Table table) {
+    return table.getStorageHandler().getClass().getSimpleName().equals("HBaseStorageHandler");
+  }
+
+  /**
+   * Return true when HBase bulkload is enabled, false otherwise.
+   *
+   * Logic duplicated from {@code HBaseStorageHandler#isHBaseBulkLoad}.
+   */
+  private boolean isHBaseBulkload(HiveConf conf) {
+    return conf.getBoolean("hive.hbase.bulkload", false);
+  }
+
   @SuppressWarnings("nls")
   private Operator genFileSinkPlan(String dest, QB qb, Operator input)
       throws SemanticException {
@@ -5417,6 +5438,7 @@ public class SemanticAnalyzer extends BaseSemanticAnalyzer {
     SortBucketRSCtx rsCtx = new SortBucketRSCtx();
     DynamicPartitionCtx dpCtx = null;
     LoadTableDesc ltd = null;
+    HBaseCompleteBulkLoadDesc cbld = null;
     boolean holdDDLTime = checkHoldDDLTime(qb);
     ListBucketingCtx lbCtx = null;
 
@@ -5474,15 +5496,15 @@ public class SemanticAnalyzer extends BaseSemanticAnalyzer {
       }
 
       boolean isNonNativeTable = dest_tab.isNonNative();
-      if (isNonNativeTable) {
-        queryTmpdir = dest_path;
-      } else {
-    	// if we are on viewfs we don't want to use /tmp as tmp dir since rename from /tmp/..
+      if (!isNonNativeTable || isHBaseTable(dest_tab) && isHBaseBulkload(conf)) {
+        // if we are on viewfs we don't want to use /tmp as tmp dir since rename from /tmp/..
         // to final /user/hive/warehouse/ will fail later, so instead pick tmp dir
-        // on same namespace as tbl dir. 
-        queryTmpdir = dest_path.toUri().getScheme().equals("viewfs") ? 
-          ctx.getExtTmpPathRelTo(dest_path.getParent().toUri()) : 
+        // on same namespace as tbl dir.
+        queryTmpdir = dest_path.toUri().getScheme().equals("viewfs") ?
+          ctx.getExtTmpPathRelTo(dest_path.getParent().toUri()) :
           ctx.getExternalTmpPath(dest_path.toUri());
+      } else {
+        queryTmpdir = dest_path;
       }
       if (dpCtx != null) {
         // set the root of the temporay path where dynamic partition columns will populate
@@ -5515,6 +5537,16 @@ public class SemanticAnalyzer extends BaseSemanticAnalyzer {
           ltd.setHoldDDLTime(true);
         }
         loadTableWork.add(ltd);
+      }
+
+      // check hbase bulkload scenario
+      if (isHBaseTable(dest_tab) && isHBaseBulkload(conf)) {
+        /*
+         * In order for the MoveTask to be added to the plan, cbld.getSourcePath() must match
+         * finalDirName in GenMapRedUtils#findMoveTask
+         */
+        cbld = new HBaseCompleteBulkLoadDesc(queryTmpdir, table_desc);
+        completeBulkLoadWork.add(cbld);
       }
 
       WriteEntity output = null;
@@ -9105,7 +9137,7 @@ public class SemanticAnalyzer extends BaseSemanticAnalyzer {
     ParseContext pCtx = new ParseContext(conf, qb, child, opToPartPruner,
         opToPartList, topOps, topSelOps, opParseCtx, joinContext, smbMapJoinContext,
         topToTable, topToTableProps, fsopToTable,
-        loadTableWork, loadFileWork, ctx, idToTableNameMap, destTableId, uCtx,
+        loadTableWork, loadFileWork, completeBulkLoadWork, ctx, idToTableNameMap, destTableId, uCtx,
         listMapJoinOpsNoReducer, groupOpToInputTables, prunedPartitions,
         opToSamplePruner, globalLimitCtx, nameToSplitSample, inputs, rootTasks,
         opToPartToSkewedPruner, viewAliasToInput,

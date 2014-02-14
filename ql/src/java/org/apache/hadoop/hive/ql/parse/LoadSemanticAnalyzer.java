@@ -261,7 +261,7 @@ public class LoadSemanticAnalyzer extends BaseSemanticAnalyzer {
       Utilities.getTableDesc(ts.tableHandle), partSpec, isOverWrite);
 
     Task<? extends Serializable> childTask = TaskFactory.get(new MoveWork(getInputs(),
-        getOutputs(), loadTableWork, null, true), conf);
+        getOutputs(), loadTableWork, null, null, true), conf);
     if (rTask != null) {
       rTask.addDependentTask(childTask);
     } else {

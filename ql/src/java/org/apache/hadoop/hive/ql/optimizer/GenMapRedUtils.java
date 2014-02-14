@@ -1229,7 +1229,7 @@ public final class GenMapRedUtils {
     // 2. Constructing a conditional task consisting of a move task and a map reduce task
     //
     MoveWork dummyMv = new MoveWork(null, null, null,
-         new LoadFileDesc(fsInputDesc.getFinalDirName(), finalName, true, null, null), false);
+         new LoadFileDesc(fsInputDesc.getFinalDirName(), finalName, true, null, null), null, false);
     MapWork cplan;
     Serializable work;
 
@@ -1379,6 +1379,8 @@ public final class GenMapRedUtils {
       statsWork = new StatsWork(mvWork.getLoadTableWork());
     } else if (mvWork.getLoadFileWork() != null) {
       statsWork = new StatsWork(mvWork.getLoadFileWork());
+    } else if (mvWork.getCompleteBulkLoadWork() != null) {
+      statsWork = new StatsWork(mvWork.getCompleteBulkLoadWork());
     }
     assert statsWork != null : "Error when genereting StatsTask";
 
@@ -1589,6 +1591,8 @@ public final class GenMapRedUtils {
         srcDir = mvWork.getLoadFileWork().getSourcePath();
       } else if (mvWork.getLoadTableWork() != null) {
         srcDir = mvWork.getLoadTableWork().getSourcePath();
+      } else if (mvWork.getCompleteBulkLoadWork() != null) {
+        srcDir = mvWork.getCompleteBulkLoadWork().getSourcePath();
       }
 
       if ((srcDir != null)
