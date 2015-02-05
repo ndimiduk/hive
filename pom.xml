@@ -47,6 +47,7 @@
     <module>serde</module>
     <module>service</module>
     <module>service-hive</module>
+    <module>service-phoenix</module>
     <module>shims</module>
     <module>spark-client</module>
     <module>testutils</module>

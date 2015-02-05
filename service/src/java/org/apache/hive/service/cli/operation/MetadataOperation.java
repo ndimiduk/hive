@@ -34,6 +34,13 @@ public abstract class MetadataOperation extends Operation {
 
   protected static final String DEFAULT_HIVE_CATALOG = "";
 
+  protected static final TableSchema GET_TABLES_RESULT_SET_SCHEMA = new TableSchema()
+  .addStringColumn("TABLE_CAT", "Catalog name. NULL if not applicable.")
+  .addStringColumn("TABLE_SCHEM", "Schema name.")
+  .addStringColumn("TABLE_NAME", "Table name.")
+  .addStringColumn("TABLE_TYPE", "The table type, e.g. \"TABLE\", \"VIEW\", etc.")
+  .addStringColumn("REMARKS", "Comments about the table.");
+
   protected MetadataOperation(Session parentSession, OperationType opType) {
     super(parentSession, opType, false);
     setHasResultSet(true);

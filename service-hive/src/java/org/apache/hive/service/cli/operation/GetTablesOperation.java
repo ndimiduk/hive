@@ -46,14 +46,6 @@ public class GetTablesOperation extends MetadataOperation {
   private final RowSet rowSet;
   private final TableTypeMapping tableTypeMapping;
 
-
-  private static final TableSchema RESULT_SET_SCHEMA = new TableSchema()
-  .addStringColumn("TABLE_CAT", "Catalog name. NULL if not applicable.")
-  .addStringColumn("TABLE_SCHEM", "Schema name.")
-  .addStringColumn("TABLE_NAME", "Table name.")
-  .addStringColumn("TABLE_TYPE", "The table type, e.g. \"TABLE\", \"VIEW\", etc.")
-  .addStringColumn("REMARKS", "Comments about the table.");
-
   protected GetTablesOperation(Session parentSession,
       String catalogName, String schemaName, String tableName,
       List<String> tableTypes) {
@@ -68,7 +60,7 @@ public class GetTablesOperation extends MetadataOperation {
     if (tableTypes != null) {
       this.tableTypes.addAll(tableTypes);
     }
-    this.rowSet = RowSetFactory.create(RESULT_SET_SCHEMA, getProtocolVersion());
+    this.rowSet = RowSetFactory.create(GET_TABLES_RESULT_SET_SCHEMA, getProtocolVersion());
   }
 
   @Override
@@ -107,7 +99,7 @@ public class GetTablesOperation extends MetadataOperation {
   @Override
   public TableSchema getResultSetSchema() throws HiveSQLException {
     assertState(OperationState.FINISHED);
-    return RESULT_SET_SCHEMA;
+    return GET_TABLES_RESULT_SET_SCHEMA;
   }
 
   /* (non-Javadoc)
