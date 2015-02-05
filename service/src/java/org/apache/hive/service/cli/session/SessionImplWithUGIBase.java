@@ -19,6 +19,8 @@
 package org.apache.hive.service.cli.session;
 
 import java.io.IOException;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -26,7 +28,6 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.ql.metadata.Hive;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
-import org.apache.hadoop.hive.shims.ShimLoader;
 import org.apache.hadoop.hive.shims.Utils;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hive.service.auth.HiveAuthFactory;
@@ -35,19 +36,40 @@ import org.apache.hive.service.cli.thrift.TProtocolVersion;
 
 /**
  *
- * HiveSessionImplwithUGI.
  * HiveSession with connecting user's UGI and delegation token if required
  */
-public class HiveSessionImplwithUGI extends HiveSessionImpl {
+public abstract class SessionImplWithUGIBase extends SessionImplBase implements SessionWithUGI {
   public static final String HS2TOKEN = "HiveServer2ImpersonationToken";
 
   private UserGroupInformation sessionUgi = null;
   private String delegationTokenStr = null;
   private Hive sessionHive = null;
-  private HiveSession proxySession = null;
-  static final Log LOG = LogFactory.getLog(HiveSessionImplwithUGI.class);
+  private Session proxySession = null;
+  static final Log LOG = LogFactory.getLog(SessionImplWithUGIBase.class);
 
-  public HiveSessionImplwithUGI(TProtocolVersion protocol, String username, String password,
+  /** Used to invoke public constructors of implementation classes. */
+  public static SessionWithUGI invokeConstructor(Class<? extends SessionWithUGI> clazz,
+      TProtocolVersion protocol, String username, String password, HiveConf hiveConf,
+      String ipAddress, String delegationToken) throws HiveSQLException {
+    SessionWithUGI session;
+    try {
+      Constructor<? extends SessionWithUGI> ctor = clazz.getDeclaredConstructor(TProtocolVersion.class,
+          String.class, String.class, HiveConf.class, String.class, String.class);
+      session = ctor.newInstance(protocol, username, password, hiveConf, ipAddress, delegationToken);
+    } catch (NoSuchMethodException e) {
+      throw new HiveSQLException(e);
+    } catch (InvocationTargetException e) {
+      throw new HiveSQLException(e);
+    } catch (InstantiationException e) {
+      throw new HiveSQLException(e);
+    } catch (IllegalAccessException e) {
+      throw new HiveSQLException(e);
+    }
+    return session;
+  }
+
+  /** Invoked via reflection */
+  public SessionImplWithUGIBase(TProtocolVersion protocol, String username, String password,
       HiveConf hiveConf, String ipAddress, String delegationToken) throws HiveSQLException {
     super(protocol, username, password, hiveConf, ipAddress);
     setSessionUGI(username);
@@ -62,7 +84,7 @@ public class HiveSessionImplwithUGI extends HiveSessionImpl {
     }
   }
 
-  // setup appropriate UGI for the session
+  @Override
   public void setSessionUGI(String owner) throws HiveSQLException {
     if (owner == null) {
       throw new HiveSQLException("No username provided for impersonation");
@@ -79,6 +101,7 @@ public class HiveSessionImplwithUGI extends HiveSessionImpl {
     }
   }
 
+  @Override
   public UserGroupInformation getSessionUgi() {
     return this.sessionUgi;
   }
@@ -152,13 +175,14 @@ public class HiveSessionImplwithUGI extends HiveSessionImpl {
   }
 
   @Override
-  protected HiveSession getSession() {
+  protected Session getSession() {
     assert proxySession != null;
 
     return proxySession;
   }
 
-  public void setProxySession(HiveSession proxySession) {
+  @Override
+  public void setProxySession(Session proxySession) {
     this.proxySession = proxySession;
   }
 

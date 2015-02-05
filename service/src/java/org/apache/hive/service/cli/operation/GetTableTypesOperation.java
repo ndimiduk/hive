@@ -27,7 +27,7 @@ import org.apache.hive.service.cli.OperationType;
 import org.apache.hive.service.cli.RowSet;
 import org.apache.hive.service.cli.RowSetFactory;
 import org.apache.hive.service.cli.TableSchema;
-import org.apache.hive.service.cli.session.HiveSession;
+import org.apache.hive.service.cli.session.Session;
 
 /**
  * GetTableTypesOperation.
@@ -41,7 +41,7 @@ public class GetTableTypesOperation extends MetadataOperation {
   private final RowSet rowSet;
   private final TableTypeMapping tableTypeMapping;
 
-  protected GetTableTypesOperation(HiveSession parentSession) {
+  protected GetTableTypesOperation(Session parentSession) {
     super(parentSession, OperationType.GET_TABLE_TYPES);
     String tableMappingStr = getParentSession().getHiveConf().
         getVar(HiveConf.ConfVars.HIVE_SERVER2_TABLE_TYPE_MAPPING);

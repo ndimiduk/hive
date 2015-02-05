@@ -24,8 +24,8 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import junit.framework.Assert;
-import junit.framework.TestCase;
 
+import junit.framework.TestCase;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.conf.HiveConf.ConfVars;
 import org.apache.hive.service.auth.HiveAuthFactory;
@@ -42,12 +42,12 @@ public class TestSessionHooks extends TestCase {
   private EmbeddedThriftBinaryCLIService service;
   private ThriftCLIServiceClient client;
 
-  public static class SessionHookTest implements HiveSessionHook {
+  public static class SessionHookTest implements SessionHook {
 
    public static AtomicInteger runCount = new AtomicInteger(0);
 
     @Override
-    public void run(HiveSessionHookContext sessionHookContext) throws HiveSQLException {
+    public void run(SessionHookContext sessionHookContext) throws HiveSQLException {
       Assert.assertEquals(sessionHookContext.getSessionUser(), sessionUserName);
       String sessionHook = sessionHookContext.getSessionConf().
           getVar(ConfVars.HIVE_SERVER2_SESSION_HOOK);
@@ -71,8 +71,8 @@ public class TestSessionHooks extends TestCase {
   @Test
   public void testSessionHook () throws Exception {
     // create session, test if the hook got fired by checking the expected property
-    SessionHandle sessionHandle = client.openSession(sessionUserName, "foobar",
-          Collections.<String, String>emptyMap());
+    SessionHandle sessionHandle = client.openSession(HiveSessionType.NAME, sessionUserName,
+        "foobar", Collections.<String, String>emptyMap());
     Assert.assertEquals(1, SessionHookTest.runCount.get());
     client.closeSession(sessionHandle);
   }
@@ -88,7 +88,8 @@ public class TestSessionHooks extends TestCase {
     Map<String, String>sessConf = new HashMap<String,String>();
     sessConf.put(HiveAuthFactory.HS2_PROXY_USER, proxyUser);
     sessionUserName = proxyUser;
-    SessionHandle sessionHandle = client.openSession(connectingUser, "foobar", sessConf);
+    SessionHandle sessionHandle = client.openSession(HiveSessionType.NAME, connectingUser,
+        "foobar", sessConf);
     Assert.assertEquals(1, SessionHookTest.runCount.get());
     client.closeSession(sessionHandle);
   }

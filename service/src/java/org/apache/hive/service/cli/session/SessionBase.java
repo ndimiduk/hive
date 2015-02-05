@@ -18,22 +18,19 @@
 
 package org.apache.hive.service.cli.session;
 
-import java.util.Map;
-
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.ql.session.SessionState;
 import org.apache.hive.service.cli.SessionHandle;
+import org.apache.hive.service.cli.operation.OperationFactory;
 import org.apache.hive.service.cli.operation.OperationManager;
 import org.apache.hive.service.cli.thrift.TProtocolVersion;
 
 import java.io.File;
-import java.util.Map;
 
 /**
- * Methods that don't need to be executed under a doAs
- * context are here. Rest of them in HiveSession interface
+ * Basic session methods. For methods requiring doAs context, see {@link Session}.
  */
-public interface HiveSessionBase {
+public interface SessionBase {
 
   TProtocolVersion getProtocolVersion();
 
@@ -53,6 +50,11 @@ public interface HiveSessionBase {
    * @param operationManager
    */
   void setOperationManager(OperationManager operationManager);
+
+  /**
+   * Retrieve an OperationFactory appropriate for this Session implementation.
+   */
+  OperationFactory getOperationFactory();
 
   /**
    * Check whether operation logging is enabled and session dir is created successfully

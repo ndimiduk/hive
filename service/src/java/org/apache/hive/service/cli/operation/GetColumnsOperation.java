@@ -34,7 +34,7 @@ import org.apache.hive.service.cli.RowSet;
 import org.apache.hive.service.cli.RowSetFactory;
 import org.apache.hive.service.cli.TableSchema;
 import org.apache.hive.service.cli.Type;
-import org.apache.hive.service.cli.session.HiveSession;
+import org.apache.hive.service.cli.session.Session;
 
 /**
  * GetColumnsOperation.
@@ -104,7 +104,7 @@ public class GetColumnsOperation extends MetadataOperation {
 
   private final RowSet rowSet;
 
-  protected GetColumnsOperation(HiveSession parentSession, String catalogName, String schemaName,
+  protected GetColumnsOperation(Session parentSession, String catalogName, String schemaName,
       String tableName, String columnName) {
     super(parentSession, OperationType.GET_COLUMNS);
     this.catalogName = catalogName;

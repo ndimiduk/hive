@@ -29,6 +29,7 @@ import org.apache.hive.service.cli.OperationState;
 import org.apache.hive.service.cli.OperationStatus;
 import org.apache.hive.service.cli.RowSet;
 import org.apache.hive.service.cli.SessionHandle;
+import org.apache.hive.service.cli.session.HiveSessionType;
 import org.apache.hive.service.cli.thrift.EmbeddedThriftBinaryCLIService;
 import org.apache.hive.service.cli.thrift.ThriftCLIServiceClient;
 import org.junit.After;
@@ -209,7 +210,7 @@ public class TestOperationLoggingAPI {
 
   private SessionHandle setupSession() throws Exception {
     // Open a session
-    SessionHandle sessionHandle = client.openSession(null, null, null);
+    SessionHandle sessionHandle = client.openSession(HiveSessionType.NAME, null, null, null);
 
     // Change lock manager to embedded mode
     String queryString = "SET hive.lock.manager=" +

@@ -23,6 +23,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -69,28 +71,46 @@ import org.apache.hive.service.cli.operation.OperationManager;
 import org.apache.hive.service.cli.thrift.TProtocolVersion;
 import org.apache.hive.service.server.ThreadWithGarbageCleanup;
 
-/**
- * HiveSession
- *
- */
-public class HiveSessionImpl implements HiveSession {
-  private final SessionHandle sessionHandle;
-  private String username;
-  private final String password;
-  private HiveConf hiveConf;
-  private SessionState sessionState;
-  private String ipAddress;
+public abstract class SessionImplBase implements Session {
+  private static final Log LOG = LogFactory.getLog(SessionImplBase.class);
   private static final String FETCH_WORK_SERDE_CLASS =
       "org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe";
-  private static final Log LOG = LogFactory.getLog(HiveSessionImpl.class);
-  private SessionManager sessionManager;
-  private OperationManager operationManager;
-  private final Set<OperationHandle> opHandleSet = new HashSet<OperationHandle>();
-  private boolean isOperationLogEnabled;
-  private File sessionLogDir;
-  private volatile long lastAccessTime;
 
-  public HiveSessionImpl(TProtocolVersion protocol, String username, String password,
+  protected final SessionHandle sessionHandle;
+  protected String username;
+  protected final String password;
+  protected HiveConf hiveConf;
+  protected SessionState sessionState;
+  protected String ipAddress;
+  protected SessionManager sessionManager;
+  protected OperationManager operationManager;
+  protected final Set<OperationHandle> opHandleSet = new HashSet<OperationHandle>();
+  protected boolean isOperationLogEnabled;
+  protected File sessionLogDir;
+  protected volatile long lastAccessTime;
+
+  /** Used to invoke public constructors of implementation classes. */
+  public static Session invokeConstructor(Class<? extends Session> clazz,
+      TProtocolVersion protocol, String username, String password, HiveConf hiveConf,
+      String ipAddress) throws HiveSQLException {
+    Session session;
+    try {
+      Constructor<? extends Session> ctor = clazz.getDeclaredConstructor(
+          TProtocolVersion.class, String.class, String.class, HiveConf.class, String.class);
+      session = ctor.newInstance(protocol, username, password, hiveConf, ipAddress);
+    } catch (NoSuchMethodException e) {
+      throw new HiveSQLException(e);
+    } catch (InvocationTargetException e) {
+      throw new HiveSQLException(e);
+    } catch (InstantiationException e) {
+      throw new HiveSQLException(e);
+    } catch (IllegalAccessException e) {
+      throw new HiveSQLException(e);
+    }
+    return session;
+  }
+
+  public SessionImplBase(TProtocolVersion protocol, String username, String password,
       HiveConf serverhiveConf, String ipAddress) {
     this.username = username;
     this.password = password;
@@ -117,7 +137,6 @@ public class HiveSessionImpl implements HiveSession {
     hiveConf.setInt(ListSinkOperator.OUTPUT_PROTOCOL, protocol.getValue());
   }
 
-  @Override
   /**
    * Opens a new HiveServer2 session for the client connection.
    * Creates a new SessionState object that will be associated with this HiveServer2 session.
@@ -127,6 +146,7 @@ public class HiveSessionImpl implements HiveSession {
    * which wraps the method logic in a UserGroupInformation#doAs.
    * That's why it is important to create SessionState here rather than in the constructor.
    */
+  @Override
   public void open(Map<String, String> sessionConfMap) throws HiveSQLException {
     sessionState = new SessionState(hiveConf, username);
     sessionState.setUserIpAddress(ipAddress);
@@ -165,7 +185,7 @@ public class HiveSessionImpl implements HiveSession {
       int rc = 0;
       String cmd_trimed = cmd.trim();
       try {
-        executeStatementInternal(cmd_trimed, null, false);
+        executeStatement(cmd_trimed, null);
       } catch (HiveSQLException e) {
         rc = -1;
         LOG.warn("Failed to execute HQL command in global .hiverc file.", e);
@@ -256,10 +276,6 @@ public class HiveSessionImpl implements HiveSession {
   @Override
   public void setSessionManager(SessionManager sessionManager) {
     this.sessionManager = sessionManager;
-  }
-
-  private OperationManager getOperationManager() {
-    return operationManager;
   }
 
   @Override
@@ -371,9 +387,9 @@ public class HiveSessionImpl implements HiveSession {
           throws HiveSQLException {
     acquire(true);
 
-    OperationManager operationManager = getOperationManager();
-    ExecuteStatementOperation operation = operationManager
+    ExecuteStatementOperation operation = getOperationFactory()
         .newExecuteStatementOperation(getSession(), statement, confOverlay, runAsync);
+    operationManager.addOperation(operation);
     OperationHandle opHandle = operation.getHandle();
     try {
       operation.run();
@@ -396,8 +412,8 @@ public class HiveSessionImpl implements HiveSession {
       throws HiveSQLException {
     acquire(true);
 
-    OperationManager operationManager = getOperationManager();
-    GetTypeInfoOperation operation = operationManager.newGetTypeInfoOperation(getSession());
+    GetTypeInfoOperation operation = getOperationFactory().newGetTypeInfoOperation(getSession());
+    operationManager.addOperation(operation);
     OperationHandle opHandle = operation.getHandle();
     try {
       operation.run();
@@ -416,8 +432,8 @@ public class HiveSessionImpl implements HiveSession {
       throws HiveSQLException {
     acquire(true);
 
-    OperationManager operationManager = getOperationManager();
-    GetCatalogsOperation operation = operationManager.newGetCatalogsOperation(getSession());
+    GetCatalogsOperation operation = getOperationFactory().newGetCatalogsOperation(getSession());
+    operationManager.addOperation(operation);
     OperationHandle opHandle = operation.getHandle();
     try {
       operation.run();
@@ -436,9 +452,9 @@ public class HiveSessionImpl implements HiveSession {
       throws HiveSQLException {
     acquire(true);
 
-    OperationManager operationManager = getOperationManager();
     GetSchemasOperation operation =
-        operationManager.newGetSchemasOperation(getSession(), catalogName, schemaName);
+        getOperationFactory().newGetSchemasOperation(getSession(), catalogName, schemaName);
+    operationManager.addOperation(operation);
     OperationHandle opHandle = operation.getHandle();
     try {
       operation.run();
@@ -458,9 +474,9 @@ public class HiveSessionImpl implements HiveSession {
           throws HiveSQLException {
     acquire(true);
 
-    OperationManager operationManager = getOperationManager();
     MetadataOperation operation =
-        operationManager.newGetTablesOperation(getSession(), catalogName, schemaName, tableName, tableTypes);
+        getOperationFactory().newGetTablesOperation(getSession(), catalogName, schemaName, tableName, tableTypes);
+    operationManager.addOperation(operation);
     OperationHandle opHandle = operation.getHandle();
     try {
       operation.run();
@@ -479,8 +495,7 @@ public class HiveSessionImpl implements HiveSession {
       throws HiveSQLException {
     acquire(true);
 
-    OperationManager operationManager = getOperationManager();
-    GetTableTypesOperation operation = operationManager.newGetTableTypesOperation(getSession());
+    GetTableTypesOperation operation = getOperationFactory().newGetTableTypesOperation(getSession());
     OperationHandle opHandle = operation.getHandle();
     try {
       operation.run();
@@ -499,9 +514,9 @@ public class HiveSessionImpl implements HiveSession {
       String tableName, String columnName)  throws HiveSQLException {
     acquire(true);
 
-    OperationManager operationManager = getOperationManager();
-    GetColumnsOperation operation = operationManager.newGetColumnsOperation(getSession(),
+    GetColumnsOperation operation = getOperationFactory().newGetColumnsOperation(getSession(),
         catalogName, schemaName, tableName, columnName);
+    operationManager.addOperation(operation);
     OperationHandle opHandle = operation.getHandle();
     try {
       operation.run();
@@ -520,9 +535,9 @@ public class HiveSessionImpl implements HiveSession {
       throws HiveSQLException {
     acquire(true);
 
-    OperationManager operationManager = getOperationManager();
-    GetFunctionsOperation operation = operationManager
+    GetFunctionsOperation operation = getOperationFactory()
         .newGetFunctionsOperation(getSession(), catalogName, schemaName, functionName);
+    operationManager.addOperation(operation);
     OperationHandle opHandle = operation.getHandle();
     try {
       operation.run();
@@ -661,7 +676,7 @@ public class HiveSessionImpl implements HiveSession {
     }
   }
 
-  protected HiveSession getSession() {
+  protected Session getSession() {
     return this;
   }
 

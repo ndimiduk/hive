@@ -31,6 +31,7 @@ import org.apache.hive.service.cli.OperationHandle;
 import org.apache.hive.service.cli.OperationState;
 import org.apache.hive.service.cli.OperationStatus;
 import org.apache.hive.service.cli.SessionHandle;
+import org.apache.hive.service.cli.session.HiveSessionType;
 import org.apache.hive.service.server.HiveServer2;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -124,7 +125,7 @@ public abstract class ThriftCLIServiceTest {
   @Test
   public void testOpenSession() throws Exception {
     // Open a new client session
-    SessionHandle sessHandle = client.openSession(USERNAME,
+    SessionHandle sessHandle = client.openSession(HiveSessionType.NAME, USERNAME,
         PASSWORD, new HashMap<String, String>());
     // Session handle should not be null
     assertNotNull("Session handle should not be null", sessHandle);
@@ -134,7 +135,7 @@ public abstract class ThriftCLIServiceTest {
 
   @Test
   public void testGetFunctions() throws Exception {
-    SessionHandle sessHandle = client.openSession(USERNAME,
+    SessionHandle sessHandle = client.openSession(HiveSessionType.NAME, USERNAME,
         PASSWORD, new HashMap<String, String>());
     assertNotNull("Session handle should not be null", sessHandle);
 
@@ -158,7 +159,7 @@ public abstract class ThriftCLIServiceTest {
   public void testExecuteStatement() throws Exception {
     Map<String, String> opConf = new HashMap<String, String>();
     // Open a new client session
-    SessionHandle sessHandle = client.openSession(USERNAME,
+    SessionHandle sessHandle = client.openSession(HiveSessionType.NAME, USERNAME,
         PASSWORD, opConf);
     // Session handle should not be null
     assertNotNull("Session handle should not be null", sessHandle);
@@ -204,7 +205,7 @@ public abstract class ThriftCLIServiceTest {
   public void testExecuteStatementAsync() throws Exception {
     Map<String, String> opConf = new HashMap<String, String>();
     // Open a new client session
-    SessionHandle sessHandle = client.openSession(USERNAME,
+    SessionHandle sessHandle = client.openSession(HiveSessionType.NAME, USERNAME,
         PASSWORD, opConf);
     // Session handle should not be null
     assertNotNull("Session handle should not be null", sessHandle);

@@ -25,7 +25,10 @@ import org.apache.hadoop.hive.metastore.IMetaStoreClient;
 import org.apache.hive.service.auth.HiveAuthFactory;
 import org.apache.hive.service.cli.*;
 
-public interface HiveSession extends HiveSessionBase {
+/**
+ * Extends a {@link SessionBase} with methods requiring a doAs user context.
+ */
+public interface Session extends SessionBase {
 
   void open(Map<String, String> sessionConfMap) throws Exception;
 

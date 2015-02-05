@@ -1823,6 +1823,9 @@ public class HiveConf extends Configuration {
         "Operation will be closed when it's not accessed for this duration of time, which can be disabled by setting to zero value.\n" +
         "  With positive value, it's checked for operations in terminal state only (FINISHED, CANCELED, CLOSED, ERROR).\n" +
         "  With negative value, it's checked for all of the operations regardless of state."),
+    HIVE_SERVER2_SESSION_TYPE("hive.server2.session.type",
+        "org.apache.hive.service.cli.session.HiveSessionType",
+        "The SessionType used by this service."),
 
     HIVE_CONF_RESTRICTED_LIST("hive.conf.restricted.list",
         "hive.security.authenticator.manager,hive.security.authorization.manager,hive.users.in.admin.role",

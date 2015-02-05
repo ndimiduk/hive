@@ -19,8 +19,7 @@
 package org.apache.hive.service.cli.session;
 
 /**
- * Proxy wrapper on HiveSession to execute operations
- * by impersonating given user
+ * Proxy wrapper on Session to execute operations by impersonating given user
  */
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.InvocationTargetException;
@@ -33,27 +32,27 @@ import java.security.PrivilegedExceptionAction;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hive.service.cli.HiveSQLException;
 
-public class HiveSessionProxy implements InvocationHandler {
-  private final HiveSession base;
+public class SessionProxy implements InvocationHandler {
+  private final Session base;
   private final UserGroupInformation ugi;
 
-  public HiveSessionProxy(HiveSession hiveSession, UserGroupInformation ugi) {
-    this.base = hiveSession;
+  public SessionProxy(Session session, UserGroupInformation ugi) {
+    this.base = session;
     this.ugi = ugi;
   }
 
-  public static HiveSession getProxy(HiveSession hiveSession, UserGroupInformation ugi)
+  public static Session getProxy(Session session, UserGroupInformation ugi)
       throws IllegalArgumentException, HiveSQLException {
-    return (HiveSession)Proxy.newProxyInstance(HiveSession.class.getClassLoader(),
-        new Class<?>[] {HiveSession.class},
-        new HiveSessionProxy(hiveSession, ugi));
+    return (Session)Proxy.newProxyInstance(Session.class.getClassLoader(),
+        new Class<?>[] {Session.class},
+        new SessionProxy(session, ugi));
   }
 
   @Override
   public Object invoke(Object arg0, final Method method, final Object[] args)
       throws Throwable {
     try {
-      if (method.getDeclaringClass() == HiveSessionBase.class) {
+      if (method.getDeclaringClass() == SessionBase.class) {
         return invoke(method, args);
       }
       return ugi.doAs(

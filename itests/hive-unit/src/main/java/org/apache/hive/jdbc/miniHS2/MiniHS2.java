@@ -39,6 +39,7 @@ import org.apache.hadoop.hive.shims.ShimLoader;
 import org.apache.hive.service.Service;
 import org.apache.hive.service.cli.CLIServiceClient;
 import org.apache.hive.service.cli.SessionHandle;
+import org.apache.hive.service.cli.session.HiveSessionType;
 import org.apache.hive.service.cli.thrift.ThriftBinaryCLIService;
 import org.apache.hive.service.cli.thrift.ThriftCLIServiceClient;
 import org.apache.hive.service.cli.thrift.ThriftHttpCLIService;
@@ -378,7 +379,7 @@ public class MiniHS2 extends AbstractHiveService {
           sessionConf.put("principal", serverPrincipal);
         }
          */
-        sessionHandle = hs2Client.openSession("foo", "bar", sessionConf);
+        sessionHandle = hs2Client.openSession(HiveSessionType.NAME, "foo", "bar", sessionConf);
       } catch (Exception e) {
         // service not started yet
         continue;

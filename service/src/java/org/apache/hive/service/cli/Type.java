@@ -162,6 +162,15 @@ public enum Type {
     throw new IllegalArgumentException("Unrecognized type name: " + name);
   }
 
+  public static Type getType(int javaSQLType) {
+    for (Type type : values()) {
+      if (javaSQLType == type.javaSQLType) {
+        return type;
+      }
+    }
+    throw new IllegalArgumentException("Unsupported SQL typeId: " + javaSQLType);
+  }
+
   /**
    * Radix for this type (typically either 2 or 10)
    * Null is returned for data types where this is not applicable.

@@ -23,8 +23,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 import junit.framework.Assert;
-import junit.framework.TestCase;
 
+import junit.framework.TestCase;
 import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hive.service.cli.CLIService;
@@ -70,8 +70,7 @@ public class TestSessionGlobalInitFile extends TestCase {
     // create and put .hiverc sample file to default directory
     initFile = File.createTempFile("test", "hive");
     tmpDir =
-        initFile.getParentFile().getAbsoluteFile() + File.separator
-            + "TestSessionGlobalInitFile";
+        initFile.getParentFile().getAbsoluteFile() + File.separator + "TestSessionGlobalInitFile";
     initFile.delete();
     FileUtils.deleteDirectory(new File(tmpDir));
 
@@ -90,6 +89,8 @@ public class TestSessionGlobalInitFile extends TestCase {
     hiveConf = new HiveConf();
     hiveConf.setVar(HiveConf.ConfVars.HIVE_SERVER2_GLOBAL_INIT_FILE_LOCATION,
         initFile.getParentFile().getAbsolutePath());
+    hiveConf.setVar(HiveConf.ConfVars.HIVE_SERVER2_SESSION_TYPE,
+        HiveSessionType.class.getCanonicalName());
     service = new FakeEmbeddedThriftBinaryCLIService(hiveConf);
     service.init(new HiveConf());
     client = new ThriftCLIServiceClient(service);
@@ -123,7 +124,7 @@ public class TestSessionGlobalInitFile extends TestCase {
    * setting property.
    */
   private void doTestSessionGlobalInitFile() throws Exception {
-    SessionHandle sessionHandle = client.openSession(null, null, null);
+    SessionHandle sessionHandle = client.openSession(HiveSessionType.NAME, null, null, null);
 
     verifyInitProperty("a", "1", sessionHandle);
     verifyInitProperty("b", "1", sessionHandle);
@@ -143,7 +144,7 @@ public class TestSessionGlobalInitFile extends TestCase {
   @Test
   public void testSessionGlobalInitFileWithUser() throws Exception {
     //Test when the session is opened by a user. (HiveSessionImplwithUGI)
-    SessionHandle sessionHandle = client.openSession("hive", "password", null);
+    SessionHandle sessionHandle = client.openSession(HiveSessionType.NAME, "hive", "password", null);
     verifyInitProperty("a", "1", sessionHandle);
     client.closeSession(sessionHandle);
   }
@@ -156,13 +157,13 @@ public class TestSessionGlobalInitFile extends TestCase {
     confOverlay.put("set:hiveconf:b", "2");
     confOverlay.put("set:hivevar:c", "2");
 
-    SessionHandle sessionHandle = client.openSession(null, null, confOverlay);
+    SessionHandle sessionHandle = client.openSession(HiveSessionType.NAME, null, null, confOverlay);
     verifyInitProperty("a", "2", sessionHandle);
     verifyInitProperty("b", "2", sessionHandle);
     verifyInitProperty("c", "2", sessionHandle);
     client.closeSession(sessionHandle);
 
-    sessionHandle = client.openSession("hive", "password", confOverlay);
+    sessionHandle = client.openSession(HiveSessionType.NAME, "hive", "password", confOverlay);
     verifyInitProperty("a", "2", sessionHandle);
     client.closeSession(sessionHandle);
   }

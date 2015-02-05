@@ -18,20 +18,26 @@
 
 package org.apache.hive.service.cli.session;
 
-import org.apache.hadoop.hive.ql.hooks.Hook;
+import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hive.service.cli.HiveSQLException;
+import org.apache.hive.service.cli.operation.HiveOperationFactory;
+import org.apache.hive.service.cli.operation.OperationFactory;
+import org.apache.hive.service.cli.thrift.TProtocolVersion;
 
-/**
- * HiveSessionHook.
- * HiveServer2 session level Hook interface. The run method is executed
- *  when session manager starts a new session
- *
- */
-public interface HiveSessionHook extends Hook {
+public class HiveSessionImplWithUGI extends SessionImplWithUGIBase {
 
   /**
-   * @param sessionHookContext context
-   * @throws HiveSQLException
+   * Invoked via reflection.
+   *
+   * @see SessionImplWithUGIBase#invokeConstructor(Class, TProtocolVersion, String, String, HiveConf, String, String)
    */
-  public void run(HiveSessionHookContext sessionHookContext) throws HiveSQLException;
+  public HiveSessionImplWithUGI(TProtocolVersion protocol, String username, String password,
+      HiveConf hiveConf, String ipAddress, String delegationToken) throws HiveSQLException {
+    super(protocol, username, password, hiveConf, ipAddress, delegationToken);
+  }
+
+  @Override
+  public OperationFactory getOperationFactory() {
+    return HiveOperationFactory.getInstance();
+  }
 }

@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.hadoop.hive.conf.HiveConf;
+import org.apache.hive.service.cli.session.HiveSessionType;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -58,7 +59,7 @@ public abstract class CLIServiceTest {
   @Test
   public void testOpenSession() throws Exception {
     SessionHandle sessionHandle = client.openSession(
-        "tom", "password", Collections.<String, String>emptyMap());
+        HiveSessionType.NAME, "tom", "password", Collections.<String, String>emptyMap());
     assertNotNull(sessionHandle);
     client.closeSession(sessionHandle);
 
@@ -106,8 +107,8 @@ public abstract class CLIServiceTest {
 
   @Test
   public void testGetInfo() throws Exception {
-    SessionHandle sessionHandle = client.openSession(
-        "tom", "password", Collections.<String, String>emptyMap());
+    SessionHandle sessionHandle = client.openSession(HiveSessionType.NAME, "tom", "password",
+        Collections.<String, String>emptyMap());
     assertNotNull(sessionHandle);
 
     GetInfoValue value = client.getInfo(sessionHandle, GetInfoType.CLI_DBMS_NAME);
@@ -130,7 +131,7 @@ public abstract class CLIServiceTest {
   public void testExecuteStatement() throws Exception {
     HashMap<String, String> confOverlay = new HashMap<String, String>();
     SessionHandle sessionHandle = client.openSession(
-        "tom", "password", new HashMap<String, String>());
+        HiveSessionType.NAME, "tom", "password", new HashMap<String, String>());
     assertNotNull(sessionHandle);
 
     OperationHandle opHandle;
@@ -268,7 +269,8 @@ public abstract class CLIServiceTest {
    */
   private SessionHandle setupTestData(String tableName, String columnDefinitions,
       Map<String, String> confOverlay) throws Exception {
-    SessionHandle sessionHandle = client.openSession("tom", "password", confOverlay);
+    SessionHandle sessionHandle = client.openSession(HiveSessionType.NAME, "tom", "password",
+        confOverlay);
     assertNotNull(sessionHandle);
 
     String queryString = "SET " + HiveConf.ConfVars.HIVE_SUPPORT_CONCURRENCY.varname
@@ -341,7 +343,8 @@ public abstract class CLIServiceTest {
    */
   @Test
   public void testConfOverlay() throws Exception {
-    SessionHandle sessionHandle = client.openSession("tom", "password", new HashMap<String, String>());
+    SessionHandle sessionHandle = client.openSession(HiveSessionType.NAME, "tom", "password",
+        new HashMap<String, String>());
     assertNotNull(sessionHandle);
     String tabName = "TEST_CONF_EXEC";
     String tabNameVar = "tabNameVar";
