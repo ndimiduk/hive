@@ -20,9 +20,11 @@ package org.apache.hive.service.cli.operation;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.apache.hadoop.hive.common.classification.InterfaceAudience;
 import org.apache.hive.service.cli.OperationType;
 import org.apache.hive.service.cli.session.Session;
 
+@InterfaceAudience.Public
 public abstract class ExecuteStatementOperation extends Operation {
   protected String statement = null;
   protected Map<String, String> confOverlay = new HashMap<String, String>();

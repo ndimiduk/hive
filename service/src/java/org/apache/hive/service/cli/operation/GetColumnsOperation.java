@@ -23,6 +23,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.regex.Pattern;
 
+import org.apache.hadoop.hive.common.classification.InterfaceAudience;
 import org.apache.hadoop.hive.metastore.IMetaStoreClient;
 import org.apache.hadoop.hive.metastore.api.Table;
 import org.apache.hive.service.cli.ColumnDescriptor;
@@ -40,6 +41,7 @@ import org.apache.hive.service.cli.session.Session;
  * GetColumnsOperation.
  *
  */
+@InterfaceAudience.Public
 public class GetColumnsOperation extends MetadataOperation {
 
   private static final TableSchema RESULT_SET_SCHEMA = new TableSchema()

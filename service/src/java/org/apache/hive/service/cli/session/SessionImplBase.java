@@ -33,6 +33,7 @@ import java.util.Set;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.hive.common.classification.InterfaceAudience;
 import org.apache.hadoop.hive.common.cli.HiveFileProcessor;
 import org.apache.hadoop.hive.common.cli.IHiveFileProcessor;
 import org.apache.hadoop.hive.conf.HiveConf;
@@ -71,6 +72,11 @@ import org.apache.hive.service.cli.operation.OperationManager;
 import org.apache.hive.service.cli.thrift.TProtocolVersion;
 import org.apache.hive.service.server.ThreadWithGarbageCleanup;
 
+/**
+ * Abstract base class that implements most {@link Session} methods. Intended for use as a
+ * foundation for service-specific implementations.
+ */
+@InterfaceAudience.Public
 public abstract class SessionImplBase implements Session {
   private static final Log LOG = LogFactory.getLog(SessionImplBase.class);
   private static final String FETCH_WORK_SERDE_CLASS =

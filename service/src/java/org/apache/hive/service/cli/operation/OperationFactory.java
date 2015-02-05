@@ -17,6 +17,7 @@
  */
 package org.apache.hive.service.cli.operation;
 
+import org.apache.hadoop.hive.common.classification.InterfaceAudience;
 import org.apache.hive.service.cli.HiveSQLException;
 import org.apache.hive.service.cli.session.Session;
 
@@ -26,6 +27,7 @@ import java.util.Map;
 /**
  * Interface through which {@link Session} implementations retrieve {@link Operation} instances.
  */
+@InterfaceAudience.Public
 public interface OperationFactory {
 
   ExecuteStatementOperation newExecuteStatementOperation(Session parentSession, String statement,

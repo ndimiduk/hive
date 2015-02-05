@@ -18,9 +18,12 @@
 
 package org.apache.hive.service.cli.session;
 
+import org.apache.hadoop.hive.common.classification.InterfaceAudience;
+
 /**
  * Contains all the properties needed to support a {@link Session} implementation.
  */
+@InterfaceAudience.Public
 public interface SessionType {
 
   /** The name by which this {@code SessionType} is referred. For instance, "HIVE". */

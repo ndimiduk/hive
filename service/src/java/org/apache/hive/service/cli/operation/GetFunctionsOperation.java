@@ -21,6 +21,7 @@ package org.apache.hive.service.cli.operation;
 import java.sql.DatabaseMetaData;
 import java.util.Set;
 
+import org.apache.hadoop.hive.common.classification.InterfaceAudience;
 import org.apache.hadoop.hive.ql.exec.FunctionInfo;
 import org.apache.hadoop.hive.ql.exec.FunctionRegistry;
 import org.apache.hive.service.cli.CLIServiceUtils;
@@ -38,6 +39,7 @@ import org.apache.hive.service.cli.session.Session;
  * GetFunctionsOperation.
  *
  */
+@InterfaceAudience.Public
 public class GetFunctionsOperation extends MetadataOperation {
   private static final TableSchema RESULT_SET_SCHEMA = new TableSchema()
   .addPrimitiveColumn("FUNCTION_CAT", Type.STRING_TYPE,

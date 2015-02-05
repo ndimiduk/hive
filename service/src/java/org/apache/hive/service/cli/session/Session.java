@@ -21,6 +21,7 @@ package org.apache.hive.service.cli.session;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.hadoop.hive.common.classification.InterfaceAudience;
 import org.apache.hadoop.hive.metastore.IMetaStoreClient;
 import org.apache.hive.service.auth.HiveAuthFactory;
 import org.apache.hive.service.cli.*;
@@ -28,6 +29,7 @@ import org.apache.hive.service.cli.*;
 /**
  * Extends a {@link SessionBase} with methods requiring a doAs user context.
  */
+@InterfaceAudience.Public
 public interface Session extends SessionBase {
 
   void open(Map<String, String> sessionConfMap) throws Exception;

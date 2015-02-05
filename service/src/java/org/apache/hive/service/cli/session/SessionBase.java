@@ -18,6 +18,7 @@
 
 package org.apache.hive.service.cli.session;
 
+import org.apache.hadoop.hive.common.classification.InterfaceAudience;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.ql.session.SessionState;
 import org.apache.hive.service.cli.SessionHandle;
@@ -30,6 +31,7 @@ import java.io.File;
 /**
  * Basic session methods. For methods requiring doAs context, see {@link Session}.
  */
+@InterfaceAudience.Public
 public interface SessionBase {
 
   TProtocolVersion getProtocolVersion();

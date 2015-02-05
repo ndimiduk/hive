@@ -18,6 +18,7 @@
 
 package org.apache.hive.service.cli.operation;
 
+import org.apache.hadoop.hive.common.classification.InterfaceAudience;
 import org.apache.hadoop.hive.metastore.IMetaStoreClient;
 import org.apache.hive.service.cli.FetchOrientation;
 import org.apache.hive.service.cli.HiveSQLException;
@@ -32,6 +33,7 @@ import org.apache.hive.service.cli.session.Session;
  * GetSchemasOperation.
  *
  */
+@InterfaceAudience.Public
 public class GetSchemasOperation extends MetadataOperation {
   private final String catalogName;
   private final String schemaName;

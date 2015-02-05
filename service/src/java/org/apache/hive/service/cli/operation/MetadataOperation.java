@@ -18,6 +18,7 @@
 
 package org.apache.hive.service.cli.operation;
 
+import org.apache.hadoop.hive.common.classification.InterfaceAudience;
 import org.apache.hive.service.cli.HiveSQLException;
 import org.apache.hive.service.cli.OperationState;
 import org.apache.hive.service.cli.OperationType;
@@ -28,6 +29,7 @@ import org.apache.hive.service.cli.session.Session;
  * MetadataOperation.
  *
  */
+@InterfaceAudience.Public
 public abstract class MetadataOperation extends Operation {
 
   protected static final String DEFAULT_HIVE_CATALOG = "";
