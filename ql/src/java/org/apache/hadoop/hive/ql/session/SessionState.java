@@ -85,6 +85,8 @@ import org.apache.hadoop.util.ReflectionUtils;
 
 import com.google.common.base.Preconditions;
 
+import javax.security.auth.login.LoginException;
+
 /**
  * SessionState encapsulates common data associated with a session.
  *
@@ -490,11 +492,6 @@ public class SessionState {
       // shared with SessionState, other parts of the code might update the config, but
       // Hive.get(HiveConf) would not recognize the case when it needs refreshing
       Hive.get(new HiveConf(startSs.conf)).getMSC();
-      UserGroupInformation sessionUGI = Utils.getUGI();
-      FileSystem.get(startSs.conf);
-
-      // Create scratch dirs for this session
-      startSs.createSessionDirs(sessionUGI.getShortUserName());
 
       // Set temp file containing results to be sent to HiveClient
       if (startSs.getTmpOutputFile() == null) {
@@ -537,10 +534,15 @@ public class SessionState {
    * 4. HDFS session path
    * 5. Local session path
    * 6. HDFS temp table space
+   * <br>Invoked lazily upon resource access.
    * @param userName
    * @throws IOException
    */
-  private void createSessionDirs(String userName) throws IOException {
+  private synchronized void createSessionDirs(String userName) throws IOException {
+    if (hdfsScratchDirURIString != null || hdfsSessionPath != null || localSessionPath != null) {
+      // already created. return
+      return;
+    }
     HiveConf conf = getConf();
     Path rootHDFSDirPath = createRootHDFSDir(conf);
     // Now create session specific dirs
@@ -629,11 +631,15 @@ public class SessionState {
     }
   }
 
-  public String getHdfsScratchDirURIString() {
+  public String getHdfsScratchDirURIString() throws IOException, LoginException {
+    if (hdfsScratchDirURIString == null) {
+      UserGroupInformation sessionUGI = Utils.getUGI();
+      createSessionDirs(sessionUGI.getShortUserName());
+    }
     return hdfsScratchDirURIString;
   }
 
-  public static Path getLocalSessionPath(Configuration conf) {
+  public static Path getLocalSessionPath(Configuration conf) throws IOException, LoginException {
     SessionState ss = SessionState.get();
     if (ss == null) {
       String localPathString = conf.get(LOCAL_SESSION_PATH_KEY);
@@ -641,12 +647,14 @@ public class SessionState {
           "Conf local session path expected to be non-null");
       return new Path(localPathString);
     }
-    Preconditions.checkNotNull(ss.localSessionPath,
-        "Local session path expected to be non-null");
+    if (ss.localSessionPath == null) {
+      UserGroupInformation sessionUGI = Utils.getUGI();
+      ss.createSessionDirs(sessionUGI.getShortUserName());
+    }
     return ss.localSessionPath;
   }
 
-  public static Path getHDFSSessionPath(Configuration conf) {
+  public static Path getHDFSSessionPath(Configuration conf) throws IOException, LoginException {
     SessionState ss = SessionState.get();
     if (ss == null) {
       String sessionPathString = conf.get(HDFS_SESSION_PATH_KEY);
@@ -654,12 +662,14 @@ public class SessionState {
           "Conf non-local session path expected to be non-null");
       return new Path(sessionPathString);
     }
-    Preconditions.checkNotNull(ss.hdfsSessionPath,
-        "Non-local session path expected to be non-null");
+    if (ss.hdfsSessionPath == null) {
+      UserGroupInformation sessionUGI = Utils.getUGI();
+      ss.createSessionDirs(sessionUGI.getShortUserName());
+    }
     return ss.hdfsSessionPath;
   }
 
-  public static Path getTempTableSpace(Configuration conf) {
+  public static Path getTempTableSpace(Configuration conf) throws IOException, LoginException {
     SessionState ss = SessionState.get();
     if (ss == null) {
       String tempTablePathString = conf.get(TMP_TABLE_SPACE_KEY);
@@ -670,9 +680,11 @@ public class SessionState {
     return ss.getTempTableSpace();
   }
 
-  public Path getTempTableSpace() {
-    Preconditions.checkNotNull(this.hdfsTmpTableSpace,
-        "Temp table path expected to be non-null");
+  public Path getTempTableSpace() throws IOException, LoginException {
+    if (hdfsTmpTableSpace == null) {
+      UserGroupInformation sessionUGI = Utils.getUGI();
+      createSessionDirs(sessionUGI.getShortUserName());
+    }
     return this.hdfsTmpTableSpace;
   }
 
