@@ -89,6 +89,7 @@ public abstract class SessionImplBase implements Session {
   protected SessionState sessionState;
   protected String ipAddress;
   protected SessionManager sessionManager;
+  protected final String sessionId;
   protected OperationManager operationManager;
   protected final Set<OperationHandle> opHandleSet = new HashSet<OperationHandle>();
   protected boolean isOperationLogEnabled;
@@ -121,7 +122,7 @@ public abstract class SessionImplBase implements Session {
     this.username = username;
     this.password = password;
     this.sessionHandle = new SessionHandle(protocol);
-    this.hiveConf = new HiveConf(serverhiveConf);
+    this.hiveConf = serverhiveConf;
     this.ipAddress = ipAddress;
 
     try {
@@ -135,13 +136,9 @@ public abstract class SessionImplBase implements Session {
       LOG.warn("Error setting scheduler queue: " + e, e);
     }
     // Set an explicit session name to control the download directory name
-    hiveConf.set(ConfVars.HIVESESSIONID.varname,
-        sessionHandle.getHandleIdentifier().toString());
-    // Use thrift transportable formatter
-    hiveConf.set(ListSinkOperator.OUTPUT_FORMATTER,
-        FetchFormatter.ThriftFormatter.class.getName());
-    hiveConf.setInt(ListSinkOperator.OUTPUT_PROTOCOL, protocol.getValue());
+    this.sessionId = sessionHandle.getHandleIdentifier().toString();
   }
+
 
   /**
    * Opens a new HiveServer2 session for the client connection.
@@ -155,6 +152,7 @@ public abstract class SessionImplBase implements Session {
   @Override
   public void open(Map<String, String> sessionConfMap) throws HiveSQLException {
     sessionState = new SessionState(hiveConf, username);
+    sessionState.setSessionId(sessionId);
     sessionState.setUserIpAddress(ipAddress);
     sessionState.setIsHiveServerQuery(true);
     SessionState.start(sessionState);

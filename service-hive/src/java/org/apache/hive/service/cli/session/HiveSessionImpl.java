@@ -19,6 +19,8 @@
 package org.apache.hive.service.cli.session;
 
 import org.apache.hadoop.hive.conf.HiveConf;
+import org.apache.hadoop.hive.ql.exec.FetchFormatter;
+import org.apache.hadoop.hive.ql.exec.ListSinkOperator;
 import org.apache.hadoop.hive.ql.session.SessionState;
 import org.apache.hive.service.cli.operation.HiveOperationFactory;
 import org.apache.hive.service.cli.operation.OperationFactory;
@@ -34,6 +36,11 @@ public class HiveSessionImpl extends SessionImplBase {
   public HiveSessionImpl(TProtocolVersion protocol, String username, String password,
       HiveConf serverhiveConf, String ipAddress) {
     super(protocol, username, password, serverhiveConf, ipAddress);
+    hiveConf = new HiveConf(hiveConf);
+    // Use thrift transportable formatter
+    hiveConf.set(ListSinkOperator.OUTPUT_FORMATTER,
+        FetchFormatter.ThriftFormatter.class.getName());
+    hiveConf.setInt(ListSinkOperator.OUTPUT_PROTOCOL, protocol.getValue());
   }
 
   @Override

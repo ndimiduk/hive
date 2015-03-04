@@ -271,6 +271,9 @@ public class SessionState {
    */
   private Timestamp queryCurrentTimestamp;
 
+  /** ID of this state's session. updates should be wrapped in synchronized(this). */
+  private String sessionId;
+
   /**
    * Get the lineage state stored in this session.
    *
@@ -339,10 +342,6 @@ public class SessionState {
     // Must be deterministic order map for consistent q-test output across Java versions
     overriddenConfigurations = new LinkedHashMap<String, String>();
     overriddenConfigurations.putAll(HiveConf.getConfSystemProperties());
-    // if there isn't already a session name, go ahead and create it.
-    if (StringUtils.isEmpty(conf.getVar(HiveConf.ConfVars.HIVESESSIONID))) {
-      conf.setVar(HiveConf.ConfVars.HIVESESSIONID, makeSessionId());
-    }
     parentLoader = JavaUtils.getClassLoader();
   }
 
@@ -370,7 +369,20 @@ public class SessionState {
   }
 
   public String getSessionId() {
-    return (conf.getVar(HiveConf.ConfVars.HIVESESSIONID));
+    if (sessionId != null) return sessionId;
+    synchronized (this) {
+      if (sessionId == null) {
+        // if there isn't already a session name, go ahead and create it.
+        sessionId = makeSessionId();
+      }
+    }
+    return sessionId;
+  }
+
+  public void setSessionId(String sessionId) {
+    synchronized (this) {
+      this.sessionId = sessionId;
+    }
   }
 
   /**
@@ -488,15 +500,12 @@ public class SessionState {
     // Get the following out of the way when you start the session these take a
     // while and should be done when we start up.
     try {
-      // Hive object instance should be created with a copy of the conf object. If the conf is
-      // shared with SessionState, other parts of the code might update the config, but
-      // Hive.get(HiveConf) would not recognize the case when it needs refreshing
-      Hive.get(new HiveConf(startSs.conf)).getMSC();
+      Hive.get(startSs.conf).getMSC();
 
       // Set temp file containing results to be sent to HiveClient
       if (startSs.getTmpOutputFile() == null) {
         try {
-          startSs.setTmpOutputFile(createTempFile(startSs.getConf()));
+          startSs.setTmpOutputFile(createTempFile(startSs.getConf(), startSs.getSessionId()));
         } catch (IOException e) {
           throw new RuntimeException(e);
         }
@@ -771,12 +780,11 @@ public class SessionState {
    * @return per-session temp file
    * @throws IOException
    */
-  private static File createTempFile(HiveConf conf) throws IOException {
+  private static File createTempFile(HiveConf conf, String sessionID) throws IOException {
     String lScratchDir =
         HiveConf.getVar(conf, HiveConf.ConfVars.LOCALSCRATCHDIR);
 
     File tmpDir = new File(lScratchDir);
-    String sessionID = conf.getVar(HiveConf.ConfVars.HIVESESSIONID);
     if (!tmpDir.exists()) {
       if (!tmpDir.mkdirs()) {
         //Do another exists to check to handle possible race condition
